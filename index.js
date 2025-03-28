@@ -13,9 +13,19 @@ const args = process.argv.splice(2)
 
 // 默认配置文件为项目 package.json 同级目录下 sw.config.cjs 文件
 let configPath = args[0] || 'sw.config.cjs'
+let defaultOutput = 'dist'
 let config = {}
 let configErr = false
+let params = parseArgsToJson(args)
 
+for (let key in params) {
+  if (key === 'output') {
+    defaultOutput = params[key]
+  }
+  else if (key === 'conf') {
+    configPath = params[key]
+  }
+}
 
 try {
   // 读取配置文件
@@ -30,7 +40,7 @@ try {
 
 const options = {}
 // 项目打包文件输出目录
-options.output = config.output || 'dist'
+options.output = config.output || defaultOutput
 // 可以指定注入sw.js 的 .html 文件，默认是所有 html 文件都会注入
 options.html = config.html || []
 // .appcache 文件名称
@@ -83,7 +93,7 @@ const main = async () => {
     if (/\.html$/.test(key)) {
       if (options.html.length > 0) {
         if (options.html.includes(key)) {
-          console.log('注入sw.js：', key);
+          console.log('指定，注入sw.js：', key);
           let swLinkJs = fs.readFileSync(Path.join(__dirname, 'src/swLink.js'), 'utf-8').toString()
           let swFileRelative = Path.relative(Path.dirname(assets[key].pathAbs), swFileAbs).replace(/\\/g, '/')
           let hashFileRelative = Path.relative(Path.dirname(assets[key].pathAbs), swFileAbs).replace(/\\/g, '/')
@@ -104,7 +114,7 @@ const main = async () => {
 
           htmlList.push(key)
         } else {
-          console.log('不注入sw.js：', key);
+          console.log('未指定，不注入sw.js：', key);
         }
       }
     }
@@ -228,4 +238,22 @@ function travelFiles(path) {
   next(path)
 
   return filePath
+}
+
+/**
+ * 格式化 node 命令传入的参数
+ * */
+function parseArgsToJson(args) {
+  const result = {}
+
+  args.forEach(arg => {
+    const match = arg.match(/^([^=]+)=("([^"]*)"|([^ ]*))$/)
+    if (match) {
+      const key = match[1]
+      const value = match[3] || match[4] // 处理带引号和不带引号的值
+      result[key] = value
+    }
+  })
+
+  return result
 }
