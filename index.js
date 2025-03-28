@@ -91,31 +91,36 @@ const main = async () => {
     let source = assets[key].source
 
     if (/\.html$/.test(key)) {
+      let insw = true
       if (options.html.length > 0) {
         if (options.html.includes(key)) {
           console.log('指定，注入sw.js：', key);
-          let swLinkJs = fs.readFileSync(Path.join(__dirname, 'src/swLink.js'), 'utf-8').toString()
-          let swFileRelative = Path.relative(Path.dirname(assets[key].pathAbs), swFileAbs).replace(/\\/g, '/')
-          let hashFileRelative = Path.relative(Path.dirname(assets[key].pathAbs), swFileAbs).replace(/\\/g, '/')
-
-          // 写入 sw.js 的路径
-          swLinkJs = swLinkJs.replace(`@@SW_JS_PATH@@`, swFileRelative)
-          // 写入 sw.hash.js 的路径
-          swLinkJs = swLinkJs.replace(`@@SW_HASH_FILE_PATH@@`, hashFileRelative)
-
-          // 写入 hash 值，用来判断 Service Worker 更新
-          swLinkJs = swLinkJs.replace(`@@SW_CACHE_HASH@@`, hash)
-          // 压缩代码
-          let swLinkJsMin = await minify(swLinkJs)
-
-          // 将 sw.js 代码块，插入 html 文件头部
-          let html = source.replace(/(<\/head)/, `<script>${options.compress ? swLinkJsMin.code : swLinkJs}</script>$1`)
-          fs.writeFileSync(assets[key].pathAbs, html)
-
-          htmlList.push(key)
         } else {
           console.log('未指定，不注入sw.js：', key);
+          insw = false
         }
+      }
+
+      if (insw) {
+        let swLinkJs = fs.readFileSync(Path.join(__dirname, 'src/swLink.js'), 'utf-8').toString()
+        let swFileRelative = Path.relative(Path.dirname(assets[key].pathAbs), swFileAbs).replace(/\\/g, '/')
+        let hashFileRelative = Path.relative(Path.dirname(assets[key].pathAbs), swFileAbs).replace(/\\/g, '/')
+
+        // 写入 sw.js 的路径
+        swLinkJs = swLinkJs.replace(`@@SW_JS_PATH@@`, swFileRelative)
+        // 写入 sw.hash.js 的路径
+        swLinkJs = swLinkJs.replace(`@@SW_HASH_FILE_PATH@@`, hashFileRelative)
+
+        // 写入 hash 值，用来判断 Service Worker 更新
+        swLinkJs = swLinkJs.replace(`@@SW_CACHE_HASH@@`, hash)
+        // 压缩代码
+        let swLinkJsMin = await minify(swLinkJs)
+
+        // 将 sw.js 代码块，插入 html 文件头部
+        let html = source.replace(/(<\/head)/, `<script>${options.compress ? swLinkJsMin.code : swLinkJs}</script>$1`)
+        fs.writeFileSync(assets[key].pathAbs, html)
+
+        htmlList.push(key)
       }
     }
 
