@@ -2,6 +2,13 @@
 
 Vue、React 或其它单页面应用，集成 Service Worker 并开启缓存。支持webpack和vite等构建工具<br>
 
+v1.3.0 版本更新说明：
+  1、在v1.3.0版本中打包命令进行有简化，之前版本的用户，请查看以前的 README.md 文件。
+  2、新增了 html 配置参数，可以指定需要注入sw.js的 html 文件
+  3、打包输出的 log 更加清晰
+
+如果你一直是使用默认配置，那么升级 v1.3.0版本无需任何改动。
+
 #### 介绍
 
 Vue项目 或 React 等工程化项目单页面应用，在打包时自动集成 Service Worker 服务并开启缓存策略。<br>
@@ -10,7 +17,7 @@ Vue项目 或 React 等工程化项目单页面应用，在打包时自动集成
 加载的.gz、.gzip文件不会被缓存，所以如果配置打包时压缩文件，会导致sw离线缓存失效。
 Service Worker 遵循同源策略，所以跨域资源不能缓存<br>
 
-[项目demo及源码](https://github.com/blcyzycc/vue-provide-state)
+[项目源码地址](https://github.com/blcyzycc/web-sw-pack)
 
 #### 软件架构
 
