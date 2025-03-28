@@ -10,6 +10,7 @@ Vue项目 或 React 等工程化项目单页面应用，在打包时自动集成
 加载的.gz、.gzip文件不会被缓存，所以如果配置打包时压缩文件，会导致sw离线缓存失效。
 Service Worker 遵循同源策略，所以跨域资源不能缓存<br>
 
+[项目demo及源码](https://github.com/blcyzycc/vue-provide-state)
 
 #### 软件架构
 
@@ -50,6 +51,8 @@ npm i -D web-sw-pack
 注意，请注意文件编码需为 utf-8 编码文件，否则可能导致参数读取失败。
 
 ```
+output    项目打包文件输出目录，默认 dist
+html      指定的 .html 文件，默认是所有 html 都会注入sw.js，指定后只注入指定 html 文件
 name      可选，打包之后 Service Worker 文件的名称，默认 sw，全名 sw.js；
 version   可选，打包之后 Service Worker 的版本号，默认 0.0.1；
 cacheFlag 可选，打包时匹配文件内容中是否包此 flag，有则离线缓存。
@@ -84,7 +87,9 @@ compress  是否压缩sw代码，默认 true 压缩。
 
 ```
 module.exports = {
-  name: 'sw',
+  output: 'dist', // 项目打包文件输出目录
+  html: ['index.html'], // 指定的 .html 文件，默认是所有 html 都会注入sw.js
+  name: 'sw.' + Math.random().toString().substring(2,10), // 可以随机文件名字，解决线上sw.js文件被缓存问题
   version: '0.0.1',
   cacheFlag: 'ServiceWorkerFlag',     // 缓存内容中包含 ServiceWorkerFlag 字符串的文件
   excache: /(edit\/|\.mp4$|\.map$)/,  // 不缓存 edit目录下的所有文件 和 .mp4 .map 后缀的文件
@@ -105,19 +110,19 @@ module.exports = {
 ```
 "scripts": {
   ...
-  "build": "vue-cli-service build && node node_modules/web-sw-pack conf=sw.test.config.cjs",
+  "build": "vue-cli-service build && webswpack sw.config.cjs",
   ...
 }
 ```
 
 
-配置打包命令可以设置参数，output 项目输出目录，默认值 dist，打包配置文件 conf，默认值 sw.config.cjs
+打包命令可以设置参数，修改配置文件路径，默认值 sw.config.cjs
 
 如果有自定义 output 和 配置文件，例如需要根据不同的环境变量打包，可以使用多个配置文件。
 ```
-"build": "vue-cli-service build && node node_modules/web-sw-pack output=dist conf=sw.config.cjs",
-"build:pre": "vue-cli-service build --mode pre && node node_modules/web-sw-pack output=dist_pre conf=sw.pre.config.cjs",
-"build:test": "vue-cli-service build --mode test && node node_modules/web-sw-pack output=dist_test conf=sw.test.config.cjs",
+"build": "vue-cli-service build && webswpack sw.config.cjs",
+"build:pre": "vue-cli-service build --mode pre && node webswpack sw.pre.config.cjs",
+"build:test": "vue-cli-service build --mode test && node webswpack sw.test.config.cjs",
 ```
 
 
@@ -139,16 +144,17 @@ module.exports = {
 
 #### 使用案例 3
 
-全部使用默认配置，只需要配置打包命令即可，可以不设置 sw.config.cjs 文件：
+全部使用默认配置，只需要配置打包命令即可：
 
 ```
 "scripts": {
   ...
-  "build": "vue-cli-service build && node node_modules/web-sw-pack",
+  "build": "vue-cli-service build && webswpack",
   ...
 }
 ```
 
+如果你的配置文件就是sw.config.cjs，打包命令也可缩减成上面那样。
 
 #### 参与贡献
 blcyzycc

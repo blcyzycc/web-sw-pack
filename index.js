@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 /**
  * 生成 ServiceWorker 离线配置文件
  *
@@ -9,42 +11,28 @@ const { minify } = require('terser')
 const cwd = process.cwd()
 const args = process.argv.splice(2)
 
-// 入参处理
-const params = {
-  // 项目文件目录
-  output: 'dist',
-  // 配置文件目录
-  conf: 'sw.config.js',
-}
-const argsObj = {}
-args.forEach(m => {
-  let o = m.split('=')
-  if (o[0] && o[1]) {
-    argsObj[o[0]] = o[1]
-  }
-})
-for (let key in params) {
-  if (argsObj[key]) {
-    params[key] = argsObj[key]
-  }
-}
-
-params.conf = Path.join(cwd, params.conf)
-
-let configErr = false
+// 默认配置文件为项目 package.json 同级目录下 sw.config.cjs 文件
+let configPath = args[0] || 'sw.config.cjs'
 let config = {}
+let configErr = false
+
 
 try {
-  config = require(params.conf)
-} catch (e) {
+  // 读取配置文件
+  config = require(Path.join(cwd, configPath))
+} catch (err) {
   configErr = true
 
-  console.log(e);
-  console.log(`No configuration files detected: ${params.conf}, using default configuration.`);
+  console.log(err);
+  console.warn(`No configuration files detected: ${Path.join(cwd, configPath)}, using default configuration.`);
 }
 
 
 const options = {}
+// 项目打包文件输出目录
+options.output = config.output || 'dist'
+// 可以指定注入sw.js 的 .html 文件，默认是所有 html 文件都会注入
+options.html = config.html || []
 // .appcache 文件名称
 options.name = config.name || 'sw'
 // 应用版本号
@@ -71,7 +59,7 @@ if (options.time < 0) {
 const max = Math.max(...options.size)
 const min = Math.min(...options.size)
 
-const output = Path.normalize(Path.join(cwd, params.output))  // 项目文件绝对路径
+const output = Path.normalize(Path.join(cwd, options.output))  // 项目文件绝对路径
 const relative = Path.relative(cwd, output) // 项目文件相对命令运行时的路径
 const swFile = options.name + '.js'
 const hashFile = options.name + '.hash'
@@ -84,30 +72,41 @@ const assets = travelFiles(output)
 const main = async () => {
   let cacheFiles = []
 
+  if (options.html.length > 0) {
+    console.log('需要注入 sw.js 的文件有：', options.html);
+  }
+
   // 遍历打包后的文件列表
   for (let key in assets) {
     let source = assets[key].source
 
     if (/\.html$/.test(key)) {
-      let swLinkJs = fs.readFileSync(Path.join(__dirname, 'src/swLink.js'), 'utf-8').toString()
-      let swFileRelative = Path.relative(Path.dirname(assets[key].pathAbs), swFileAbs).replace(/\\/g, '/')
-      let hashFileRelative = Path.relative(Path.dirname(assets[key].pathAbs), swFileAbs).replace(/\\/g, '/')
+      if (options.html.length > 0) {
+        if (options.html.includes(key)) {
+          console.log('注入sw.js：', key);
+          let swLinkJs = fs.readFileSync(Path.join(__dirname, 'src/swLink.js'), 'utf-8').toString()
+          let swFileRelative = Path.relative(Path.dirname(assets[key].pathAbs), swFileAbs).replace(/\\/g, '/')
+          let hashFileRelative = Path.relative(Path.dirname(assets[key].pathAbs), swFileAbs).replace(/\\/g, '/')
 
-      // 写入 sw.js 的路径
-      swLinkJs = swLinkJs.replace(`@@SW_JS_PATH@@`, swFileRelative)
-      // 写入 sw.hash.js 的路径
-      swLinkJs = swLinkJs.replace(`@@SW_HASH_FILE_PATH@@`, hashFileRelative)
+          // 写入 sw.js 的路径
+          swLinkJs = swLinkJs.replace(`@@SW_JS_PATH@@`, swFileRelative)
+          // 写入 sw.hash.js 的路径
+          swLinkJs = swLinkJs.replace(`@@SW_HASH_FILE_PATH@@`, hashFileRelative)
 
-      // 写入 hash 值，用来判断 Service Worker 更新
-      swLinkJs = swLinkJs.replace(`@@SW_CACHE_HASH@@`, hash)
-      // 压缩代码
-      let swLinkJsMin = await minify(swLinkJs)
+          // 写入 hash 值，用来判断 Service Worker 更新
+          swLinkJs = swLinkJs.replace(`@@SW_CACHE_HASH@@`, hash)
+          // 压缩代码
+          let swLinkJsMin = await minify(swLinkJs)
 
-      // 将 sw.js 代码块，插入 html 文件头部
-      let html = source.replace(/(<\/head)/, `<script>${options.compress ? swLinkJsMin.code : swLinkJs}</script>$1`)
-      fs.writeFileSync(assets[key].pathAbs, html)
+          // 将 sw.js 代码块，插入 html 文件头部
+          let html = source.replace(/(<\/head)/, `<script>${options.compress ? swLinkJsMin.code : swLinkJs}</script>$1`)
+          fs.writeFileSync(assets[key].pathAbs, html)
 
-      htmlList.push(key)
+          htmlList.push(key)
+        } else {
+          console.log('不注入sw.js：', key);
+        }
+      }
     }
 
     let size = assets[key].size
@@ -169,15 +168,20 @@ const main = async () => {
   // 添加 sw.hash.js 文件，sw.hash.js 文件将放在根目录下
   fs.writeFileSync(Path.join(relative, hashFile), swHashJs)
 
-  console.log(`Service Worker 服务已注入：
-${htmlList.join(' ')}
-${swFile}
-${hashFile}
-${options.version}
-`);
+  console.log(' ');
+
+  if (htmlList.length > 0) {
+    console.log(`Service Worker 服务已注入：${htmlList.join('    ')}\n${swFile}\n${hashFile}\n${options.version}`)
+  } else {
+    if (options.html.length > 0) {
+      console.log(`Service Worker 服务未注入：没有匹配到指定的${options.html}文件`)
+    } else {
+      console.log(`Service Worker 服务未注入：没有匹配到 html 文件`)
+    }
+  }
 
   if (configErr) {
-    console.log(`未检测到配置文件，或配置文件出错，sw将使用默认配置。`);
+    console.log(`未检测到配置文件，或配置文件出错，sw启用默认配置注入`);
   }
 }
 
