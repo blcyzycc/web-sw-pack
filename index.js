@@ -11,10 +11,14 @@ const { minify } = require('terser')
 const cwd = process.cwd()
 const args = process.argv.splice(2)
 
-// 默认配置文件为项目 package.json 同级目录下 sw.config.cjs 文件
-let configPath = args[0] || 'sw.config.cjs'
+// 默认项目导出文件夹为根目录下 dist 文件夹
 let defaultOutput = 'dist'
+// 默认配置文件为项目 package.json 同级目录下 sw.config.cjs 文件
+let defaultConfig = args[0] || 'sw.config.cjs'
+
+let configFilePath = Path.join(cwd, defaultConfig)
 let config = {}
+let fileNull = false
 let configErr = false
 let params = parseArgsToJson(args)
 
@@ -23,18 +27,28 @@ for (let key in params) {
     defaultOutput = params[key]
   }
   else if (key === 'conf') {
-    configPath = params[key]
+    defaultConfig = params[key]
   }
 }
 
 try {
+  // 判断配置文件是否存在
+  fs.accessSync(configFilePath, fs.constants.F_OK);
+} catch (err) {
+  fileNull = true
+  console.log(`未检测到配置文件，sw启用默认配置注入`);
+  console.warn(`No configuration files detected: ${configFilePath}`);
+}
+
+try {
   // 读取配置文件
-  config = require(Path.join(cwd, configPath))
+  if (!fileNull) config = require(configFilePath)
 } catch (err) {
   configErr = true
-
   console.log(err);
-  console.warn(`No configuration files detected: ${Path.join(cwd, configPath)}, using default configuration.`);
+  console.log();
+  console.log(`配置文件出错，sw启用默认配置注入`);
+  console.warn(`Configuration file error: ${configFilePath}`);
 }
 
 
@@ -183,7 +197,7 @@ const main = async () => {
   // 添加 sw.hash.js 文件，sw.hash.js 文件将放在根目录下
   fs.writeFileSync(Path.join(relative, hashFile), swHashJs)
 
-  console.log(' ');
+  console.log();
 
   if (htmlList.length > 0) {
     console.log(`Service Worker 服务已注入：${htmlList.join('    ')}\n${swFile}\n${hashFile}\n${options.version}`)
@@ -193,10 +207,6 @@ const main = async () => {
     } else {
       console.log(`Service Worker 服务未注入：没有匹配到 html 文件`)
     }
-  }
-
-  if (configErr) {
-    console.log(`未检测到配置文件，或配置文件出错，sw启用默认配置注入`);
   }
 }
 
