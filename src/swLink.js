@@ -16,7 +16,7 @@ var SW_CACHE_HASH = '@@SW_CACHE_HASH@@';
       console.log('Service Worker');
 
       navigator.serviceWorker.addEventListener('message', function (event) {
-        let data = event.data || {}
+        var data = event.data || {}
 
         if (data.type === 'swReload') {
           window.location.reload()
