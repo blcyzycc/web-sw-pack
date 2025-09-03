@@ -1,0 +1,11 @@
+CACHE MANIFEST
+# Version '@@SW_CACHE_HASH@@'
+
+CACHE:
+'@@SW_CACHE_FILES@@'
+
+NETWORK:
+*
+
+FALLBACK:
+/ index.html

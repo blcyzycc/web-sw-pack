@@ -59,6 +59,8 @@ options.output = config.output || defaultOutput
 options.html = config.html || []
 // .appcache 文件名称
 options.name = config.name || 'sw'
+// .appcache 文件名称
+options.manifest = config.manifest || 'webapp.appcache'
 // 应用版本号
 options.version = config.version || '0.0.1'
 // 此正则匹配到的文件，不进行缓存
@@ -87,8 +89,9 @@ const output = Path.normalize(Path.join(cwd, options.output))  // 项目文件�
 const relative = Path.relative(cwd, output) // 项目文件相对命令运行时的路径
 const swFile = options.name + '.js'
 const hashFile = options.name + '.hash'
-const hash = `${String(Math.random()).substring(2, 10)}_${options.version}`
-const swFileAbs = Path.normalize(Path.join(output, swFile))
+const hash = `${options.version}_${String(Math.random()).substring(2, 10)}`
+const swFileAbs = Path.normalize(Path.join(output, swFile)) // sw文件绝对路径
+const maniAbs = Path.normalize(Path.join(output, options.manifest)) // manifest文件绝对路径
 const htmlList = []
 
 const assets = travelFiles(output)
@@ -119,14 +122,17 @@ const main = async () => {
         let swLinkJs = fs.readFileSync(Path.join(__dirname, 'src/swLink.js'), 'utf-8').toString()
         let swFileRelative = Path.relative(Path.dirname(assets[key].pathAbs), swFileAbs).replace(/\\/g, '/')
         let hashFileRelative = Path.relative(Path.dirname(assets[key].pathAbs), swFileAbs).replace(/\\/g, '/')
+        let maniRelative = Path.relative(Path.dirname(assets[key].pathAbs), maniAbs).replace(/\\/g, '/')
 
         // 写入 sw.js 的路径
         swLinkJs = swLinkJs.replace(`@@SW_JS_PATH@@`, swFileRelative)
         // 写入 sw.hash.js 的路径
         swLinkJs = swLinkJs.replace(`@@SW_HASH_FILE_PATH@@`, hashFileRelative)
-
         // 写入 hash 值，用来判断 Service Worker 更新
         swLinkJs = swLinkJs.replace(`@@SW_CACHE_HASH@@`, hash)
+        // 写入 manifest 缓存配置文件，兼容低版本webview
+        swLinkJs = swLinkJs.replace(`@@SW_MANIFEST_NAME@@`, maniRelative)
+
         // 压缩代码
         let swLinkJsMin = await minify(swLinkJs)
 
@@ -193,10 +199,21 @@ const main = async () => {
   // 添加 sw.js 文件，sw.js 文件将放在根目录下
   fs.writeFileSync(Path.join(relative, swFile), options.compress ? swJsMin.code : swJs)
 
-  let swHashJs = `${hash}`
   // 添加 sw.hash.js 文件，sw.hash.js 文件将放在根目录下
-  fs.writeFileSync(Path.join(relative, hashFile), swHashJs)
+  fs.writeFileSync(Path.join(relative, hashFile), hash)
 
+
+  // 兼容低版本的webview，设置 manifest 文件来控制缓存
+  let appcache = fs.readFileSync(Path.join(__dirname, 'src/.appcache'), 'utf-8').toString()
+  let filesBreak = cacheFiles.join('\n')
+
+  appcache = appcache.replace(`'@@SW_CACHE_HASH@@'`, hash)
+  appcache = appcache.replace(`'@@SW_CACHE_FILES@@'`, filesBreak)
+
+  // 添加 sw.hash.js 文件，sw.hash.js 文件将放在根目录下
+  fs.writeFileSync(Path.join(relative, options.manifest), appcache)
+
+  // 打印空的换行
   console.log();
 
   if (htmlList.length > 0) {

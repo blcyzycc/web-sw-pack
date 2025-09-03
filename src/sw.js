@@ -3,33 +3,33 @@
  * */
 
 // 缓存区名称，打包时传入，值为字符串
-const SW_CACHE_HASH = '@@SW_CACHE_HASH@@'
+var SW_CACHE_HASH = '@@SW_CACHE_HASH@@'
 
 // sw.js 文件名称
-const SW_JS_NAME = '@@SW_JS_NAME@@'
+var SW_JS_NAME = '@@SW_JS_NAME@@'
 
 // 项目目录地址，根据 sw.js 运行路径得出
-const PUBLIC_URL = self.serviceWorker.scriptURL.replace(SW_JS_NAME, '')
+var PUBLIC_URL = self.serviceWorker.scriptURL.replace(SW_JS_NAME, '')
 
 // 需要离线缓存的文件，在参与打包时会替换为形如 ['index.html', 'js/index.js'] 的数组
-const SW_CACHE_FILES = '@@SW_CACHE_FILES@@'
+var SW_CACHE_FILES = '@@SW_CACHE_FILES@@'
 
 // 控制否能脱机使用
-const SW_OFFLINE = '@@SW_OFFLINE@@'
+var SW_OFFLINE = '@@SW_OFFLINE@@'
 
 // 上次检查更新的时间
-let updateTime = 0
+var updateTime = 0
 
 // 检查有效时间
-let effectiveTime = '@@SW_EFFECTIVE_TIME@@'
+var effectiveTime = '@@SW_EFFECTIVE_TIME@@'
 
 // 当前活动的窗口的id
-let nowClientId = ''
+var nowClientId = ''
 
 // 与页面是否关联，向页面发送 message，如果页面 10s 内没有响应，说明页面与 sw.js 无关联
-let swRespond = false
+var swRespond = false
 
-const verifyHash = function () {
+var verifyHash = function () {
   // 一段时间内不要重复检查更新
   if (Date.now() - updateTime < effectiveTime) return;
   updateTime = Date.now()
@@ -43,10 +43,10 @@ const verifyHash = function () {
   }).then(function (res) {
     return res.blob()
   }).then(function (blob) {
-    let render = new FileReader()
+    var render = new FileReader()
     render.readAsText(blob, 'utf8')
     render.onload = function () {
-      let hash = render.result
+      var hash = render.result
 
       // hash 不存在，或与已改变
       if (!hash || SW_CACHE_HASH !== hash) {
@@ -96,7 +96,7 @@ const verifyHash = function () {
 }
 
 // 页面是否响应
-const waitPageRespond = function () {
+var waitPageRespond = function () {
   swRespond = true
   // 10s后检查页面是否响应，swRespond 还为真，说明页面无关联
   setTimeout(function () {
@@ -129,7 +129,7 @@ self.addEventListener('activate', function (evt) {
 })
 
 self.addEventListener('message', function (evt) {
-  let data = evt.data || {}
+  var data = evt.data || {}
   nowClientId = evt.source.id
 
   // 第一次进入页面
@@ -151,7 +151,7 @@ self.addEventListener('message', function (evt) {
 
 /* 拦截浏览器发出的的请求文件申请，根据条件判断返回缓存文件还是进行网络请求 */
 self.addEventListener('fetch', function (evt) {
-  let clientId = evt.clientId || evt.resultingClientId
+  var clientId = evt.clientId || evt.resultingClientId
 
   // 如果用户放弃使用此npm，则由此处触发 verifyHash 方法
   if (clientId !== nowClientId) {
@@ -163,7 +163,7 @@ self.addEventListener('fetch', function (evt) {
 
   evt.respondWith(
     caches.match(evt.request).then(function (response) {
-      let SW_NO_CACHE = evt.request.headers.get('SW_NO_CACHE')
+      var SW_NO_CACHE = evt.request.headers.get('SW_NO_CACHE')
 
       if (response && SW_NO_CACHE !== 'true') {
         return response
@@ -171,12 +171,12 @@ self.addEventListener('fetch', function (evt) {
 
       return fetch(evt.request).then(function (res) {
         // 注意：跨域资源 res.url 为空，因此跨域资源不会缓存
-        let url = res.url.split('?')[0] || ''
-        let contentType = res.headers.get('Content-Type') || ''
-        let cache = false
+        var url = res.url.split('?')[0] || ''
+        var contentType = res.headers.get('Content-Type') || ''
+        var cache = false
 
         if (evt.request.method === 'GET') {
-          let ext = url.split('.').pop()
+          var ext = url.split('.').pop()
 
           // 返回的 html 文件，并且 url 不是文件路径，直接缓存页面
           if (contentType.startsWith('text/html')) {
@@ -204,7 +204,7 @@ self.addEventListener('fetch', function (evt) {
         }
 
         return cache ? res.clone() : res
-      }).catch(err => {
+      }).catch(function (err) {
         console.log(err);
       })
     })

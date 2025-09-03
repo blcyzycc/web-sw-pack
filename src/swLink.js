@@ -1,7 +1,8 @@
 var SW_CACHE_HASH = '@@SW_CACHE_HASH@@';
+var SW_MANIFEST_NAME = '@@SW_MANIFEST_NAME@@';
 
 (function () {
-  // 注册 Service Worker
+  // 优先使用 Service Worker
   if ('serviceWorker' in navigator) {
     document.onreadystatechange = function () {
       if (document.readyState === 'interactive' && navigator.serviceWorker.controller) {
@@ -38,6 +39,18 @@ var SW_CACHE_HASH = '@@SW_CACHE_HASH@@';
           registrations[i].unregister()
         }
       })
+
+      if (!document.documentElement.hasAttribute('manifest')) {
+        console.log('启用 manifest 配置缓存');
+        document.documentElement.setAttribute('manifest', SW_MANIFEST_NAME);
+      }
     });
+  }
+  // 2. 降级到 AppCache
+  else if (window.applicationCache) {
+    if (!document.documentElement.hasAttribute('manifest')) {
+      console.log('启用 manifest 配置缓存');
+      document.documentElement.setAttribute('manifest', SW_MANIFEST_NAME);
+    }
   }
 })();
